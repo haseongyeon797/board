@@ -8,6 +8,8 @@ import { UserModule } from '../user/user.module';
 import { User } from '../user/entities/user.entity';
 import { BoardsModule } from '../boards/boards.module';
 import { Board } from '../boards/entities/board.entity';
+import { CommentsModule } from '../comments/comments.module';
+import { Comment } from '../comments/entities/comment.entity';
 
 @Module({
   imports: [
@@ -21,14 +23,15 @@ import { Board } from '../boards/entities/board.entity';
         username: config.get<string>('DB_USERNAME', 'postgres'),
         password: config.get<string>('DB_PASSWORD', 'postgres'),
         database: config.get<string>('DB_DATABASE', 'board'),
-        entities: [User, Board],
-        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
+        entities: [User, Board, Comment],
+        synchronize: config.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
       }),
       inject: [ConfigService],
     }),
     AuthModule,
     UserModule,
     BoardsModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

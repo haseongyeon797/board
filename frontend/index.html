@@ -65,6 +65,37 @@
             <p id="boardListEmpty" class="hidden text-center text-gray-400 text-sm py-12">아직 게시물이 없습니다. 첫 글을 작성해 보세요.</p>
         </section>
 
+        <!-- 게시물 상세 (댓글 포함) -->
+        <section id="view-board-detail" class="hidden w-full flex flex-col gap-6">
+            <div class="w-full">
+                <button type="button" id="btnBackToBoards"
+                    class="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-colors">
+                    ← 목록으로
+                </button>
+            </div>
+            <p id="detailBoardError" class="hidden text-sm text-red-600"></p>
+            <article
+                class="rounded-2xl border border-gray-100 bg-gray-50/50 p-5 text-left shadow-sm">
+                <div id="detailBoardBadge" class="flex flex-wrap items-center gap-2 mb-2"></div>
+                <h2 id="detailBoardTitle" class="text-xl font-semibold text-gray-900"></h2>
+                <p id="detailBoardBody" class="mt-3 text-sm text-gray-600 whitespace-pre-wrap"></p>
+                <div id="detailBoardActions" class="mt-4 flex justify-end gap-2 flex-wrap"></div>
+            </article>
+            <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">댓글</h3>
+                <p id="detail-comment-err" class="hidden text-xs text-red-600 mb-2"></p>
+                <div id="detail-comment-list" class="space-y-2 mb-3"></div>
+                <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                    <textarea id="detail-comment-input" rows="2" placeholder="댓글을 입력하세요"
+                        class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none resize-y min-h-[52px]"></textarea>
+                    <button type="button" id="detail-comment-submit"
+                        class="shrink-0 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-800">
+                        등록
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- 회원가입 -->
         <section id="view-register" class="hidden w-full max-w-md">
             <h2 class="text-2xl font-semibold text-center mb-2">회원가입</h2>
@@ -109,21 +140,23 @@
         <section id="view-login" class="hidden w-full max-w-md">
             <h2 class="text-2xl font-semibold text-center mb-2">로그인</h2>
             <p class="text-center text-gray-500 text-sm mb-8">이메일과 비밀번호를 입력해 주세요.</p>
-            <div class="space-y-4">
+            <form id="loginForm" class="space-y-4">
                 <div>
                     <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">이메일</label>
-                    <input type="email" id="loginEmail" placeholder="you@example.com"
+                    <input type="email" id="loginEmail" name="email" autocomplete="username" placeholder="you@example.com"
                         class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
                 </div>
                 <div>
                     <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">비밀번호</label>
-                    <input type="password" id="loginPassword" placeholder="비밀번호"
+                    <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="비밀번호"
                         class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
                 </div>
-                <button type="button" id="loginSubmit"
+                <button type="submit" id="loginSubmit"
                     class="w-full py-3.5 mt-2 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors">
                     로그인
                 </button>
+            </form>
+            <div class="space-y-4 mt-4">
                 <button type="button" id="loginGithub"
                     class="w-full py-3.5 border border-gray-200 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-50">
                     <i class="fab fa-github text-lg"></i> GitHub로 로그인
@@ -232,8 +265,25 @@
         const el = (id) => document.getElementById(id);
         const viewWelcome = el('view-welcome');
         const viewBoards = el('view-boards');
+        const viewBoardDetail = el('view-board-detail');
         const viewRegister = el('view-register');
         const viewLogin = el('view-login');
+        let currentDetailBoardId = null;
+        let detailAbortController = null;
+
+        function abortDetailRequests() {
+            if (detailAbortController) {
+                detailAbortController.abort();
+                detailAbortController = null;
+            }
+        }
+
+        function isCanceledRequest(err) {
+            if (!err) return false;
+            if (err.name === 'CanceledError') return true;
+            if (err.code === 'ERR_CANCELED') return true;
+            return typeof axios !== 'undefined' && axios.isCancel && axios.isCancel(err);
+        }
         const navLeft = el('nav-left');
         const navGuest = el('nav-guest');
         const navUser = el('nav-user');
@@ -289,12 +339,13 @@
             if (isLoggedIn() && (name === 'welcome' || name === 'register' || name === 'login')) {
                 name = 'boards';
             }
-            if (!isLoggedIn() && name === 'boards') {
+            if (!isLoggedIn() && (name === 'boards' || name === 'board-detail')) {
                 name = 'welcome';
             }
 
             viewWelcome.classList.toggle('hidden', name !== 'welcome');
             viewBoards.classList.toggle('hidden', name !== 'boards');
+            viewBoardDetail.classList.toggle('hidden', name !== 'board-detail');
             viewRegister.classList.toggle('hidden', name !== 'register');
             viewLogin.classList.toggle('hidden', name !== 'login');
 
@@ -306,10 +357,11 @@
                 refreshWelcomeMessage();
             }
             if (name === 'boards') {
+                currentDetailBoardId = null;
                 const u = getUser();
                 boardsWelcomeLine.textContent =
                     (u && (u.name || u.email) ? (u.name || u.email) + '님, ' : '') +
-                    '전체 게시물을 확인할 수 있습니다.';
+                    '글을 눌러 내용과 댓글을 확인할 수 있습니다.';
                 loadBoards();
             }
         }
@@ -349,8 +401,10 @@
             items.forEach(function (b) {
                 const card = document.createElement('article');
                 card.className =
-                    'rounded-2xl border border-gray-100 bg-gray-50/50 p-5 text-left shadow-sm';
-                const authorName = b.author && (b.author.name || b.author.email) ? (b.author.name || b.author.email) : '알 수 없음';
+                    'rounded-2xl border border-gray-100 bg-gray-50/50 p-4 text-left shadow-sm cursor-pointer hover:border-gray-200 hover:shadow transition-shadow';
+                card.setAttribute('role', 'button');
+                card.tabIndex = 0;
+                card.setAttribute('aria-label', '게시물 열기: ' + (b.title || ''));
                 const authorUserId =
                     b.author && b.author.id != null
                         ? b.author.id
@@ -359,36 +413,24 @@
                     myId != null &&
                     authorUserId != null &&
                     Number(authorUserId) === Number(myId);
-                const badge = document.createElement('div');
-                badge.className = 'flex flex-wrap items-center gap-2 mb-2';
-                const spanAuthor = document.createElement('span');
-                spanAuthor.className = 'text-xs font-medium text-gray-500';
-                spanAuthor.textContent = (mine ? '내 글 · ' : '') + authorName;
-                const spanStatus = document.createElement('span');
-                spanStatus.className =
-                    'text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ' +
-                    (b.status === 'PRIVATE' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800');
-                spanStatus.textContent = statusLabel(b.status);
-                badge.appendChild(spanAuthor);
-                badge.appendChild(spanStatus);
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between gap-3';
                 const h = document.createElement('h3');
-                h.className = 'text-lg font-semibold text-gray-900';
-                h.textContent = b.title || '';
-                const p = document.createElement('p');
-                p.className = 'mt-2 text-sm text-gray-600 whitespace-pre-wrap';
-                p.textContent = b.description || '';
-                card.appendChild(badge);
-                card.appendChild(h);
-                card.appendChild(p);
+                h.className = 'text-base font-semibold text-gray-900 flex-1 min-w-0 truncate';
+                const titleText = b.title || '';
+                h.textContent = titleText;
+                h.title = titleText;
+                row.appendChild(h);
                 if (mine) {
                     const actions = document.createElement('div');
-                    actions.className = 'mt-4 flex justify-end gap-2 flex-wrap';
+                    actions.className = 'shrink-0 flex gap-2 flex-wrap justify-end';
                     const btnEdit = document.createElement('button');
                     btnEdit.type = 'button';
                     btnEdit.className =
                         'px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-white transition-colors';
                     btnEdit.textContent = '수정';
-                    btnEdit.onclick = function () {
+                    btnEdit.onclick = function (e) {
+                        e.stopPropagation();
                         openEditModal({
                             id: b.id,
                             title: b.title || '',
@@ -401,15 +443,288 @@
                     btnDel.className =
                         'px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors';
                     btnDel.textContent = '삭제';
-                    btnDel.onclick = function () {
+                    btnDel.onclick = function (e) {
+                        e.stopPropagation();
                         deleteBoardById(b.id);
                     };
                     actions.appendChild(btnEdit);
                     actions.appendChild(btnDel);
-                    card.appendChild(actions);
+                    row.appendChild(actions);
                 }
+                card.appendChild(row);
+                const bid = b.id;
+                card.onclick = function () {
+                    void openBoardDetail(bid);
+                };
+                card.onkeydown = function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        void openBoardDetail(bid);
+                    }
+                };
                 boardList.appendChild(card);
             });
+        }
+
+        async function openBoardDetail(boardId) {
+            if (!boardId) return;
+            abortDetailRequests();
+            detailAbortController = new AbortController();
+            const signal = detailAbortController.signal;
+            currentDetailBoardId = boardId;
+            showView('board-detail');
+            await loadBoardDetailContent(boardId, signal);
+        }
+
+        function populateDetailBoard(b) {
+            const badge = el('detailBoardBadge');
+            const actions = el('detailBoardActions');
+            badge.innerHTML = '';
+            actions.innerHTML = '';
+            const myId = getUser()?.id;
+            const authorUserId =
+                b.author && b.author.id != null ? b.author.id : b.authorId;
+            const mine =
+                myId != null &&
+                authorUserId != null &&
+                Number(authorUserId) === Number(myId);
+            const authorName =
+                b.author && (b.author.name || b.author.email)
+                    ? b.author.name || b.author.email
+                    : '알 수 없음';
+            const spanAuthor = document.createElement('span');
+            spanAuthor.className = 'text-xs font-medium text-gray-500';
+            spanAuthor.textContent = (mine ? '내 글 · ' : '') + authorName;
+            const spanStatus = document.createElement('span');
+            spanStatus.className =
+                'text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ' +
+                (b.status === 'PRIVATE'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-emerald-100 text-emerald-800');
+            spanStatus.textContent = statusLabel(b.status);
+            badge.appendChild(spanAuthor);
+            badge.appendChild(spanStatus);
+            el('detailBoardTitle').textContent = b.title || '';
+            el('detailBoardBody').textContent = b.description || '';
+            if (mine) {
+                const btnEdit = document.createElement('button');
+                btnEdit.type = 'button';
+                btnEdit.className =
+                    'px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-white transition-colors';
+                btnEdit.textContent = '수정';
+                btnEdit.onclick = function () {
+                    openEditModal({
+                        id: b.id,
+                        title: b.title || '',
+                        description: b.description || '',
+                        status: b.status || 'PUBLIC',
+                    });
+                };
+                const btnDel = document.createElement('button');
+                btnDel.type = 'button';
+                btnDel.className =
+                    'px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors';
+                btnDel.textContent = '삭제';
+                btnDel.onclick = function () {
+                    deleteBoardById(b.id);
+                };
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDel);
+            }
+        }
+
+        async function loadBoardDetailContent(boardId, signal) {
+            const errBox = el('detailBoardError');
+            errBox.classList.add('hidden');
+            el('detailBoardTitle').textContent = '불러오는 중…';
+            el('detailBoardBody').textContent = '';
+            el('detailBoardBadge').innerHTML = '';
+            el('detailBoardActions').innerHTML = '';
+            try {
+                const res = await axios.get(
+                    API_URL + '/boards/' + encodeURIComponent(boardId),
+                    {
+                        headers: authHeaders(),
+                        withCredentials: true,
+                        signal: signal,
+                    },
+                );
+                populateDetailBoard(res.data);
+                await loadCommentsForBoard(boardId, signal);
+            } catch (err) {
+                if (signal && signal.aborted) return;
+                if (isCanceledRequest(err)) return;
+                console.error(err);
+                if (err.response && err.response.status === 401) {
+                    clearAuth();
+                    updateNav();
+                    showView('welcome');
+                    alert('로그인이 만료되었거나 필요합니다. 다시 로그인해 주세요.');
+                    return;
+                }
+                errBox.textContent =
+                    '게시물을 불러오지 못했습니다: ' + errMessage(err);
+                errBox.classList.remove('hidden');
+                el('detailBoardTitle').textContent = '';
+            }
+        }
+
+        function formatCommentDate(iso) {
+            try {
+                return new Date(iso).toLocaleString('ko-KR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                });
+            } catch (_) {
+                return '';
+            }
+        }
+
+        function renderCommentList(listEl, boardId, comments) {
+            listEl.innerHTML = '';
+            const myId = getUser()?.id;
+            if (!comments || comments.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-xs text-gray-400 py-1';
+                empty.textContent = '아직 댓글이 없습니다.';
+                listEl.appendChild(empty);
+                return;
+            }
+            comments.forEach(function (c) {
+                const mine =
+                    myId != null &&
+                    c.authorId != null &&
+                    Number(c.authorId) === Number(myId);
+                const row = document.createElement('div');
+                row.className =
+                    'rounded-xl border border-gray-100 bg-white p-3 text-left';
+                const meta = document.createElement('div');
+                meta.className =
+                    'flex flex-wrap items-center justify-between gap-2 mb-1';
+                const who = document.createElement('span');
+                who.className = 'text-xs font-medium text-gray-500';
+                const name =
+                    c.author && (c.author.name || c.author.email)
+                        ? c.author.name || c.author.email
+                        : '알 수 없음';
+                who.textContent = (mine ? '내 댓글 · ' : '') + name;
+                const when = document.createElement('span');
+                when.className = 'text-[10px] text-gray-400';
+                when.textContent = formatCommentDate(c.createdAt);
+                meta.appendChild(who);
+                meta.appendChild(when);
+                const body = document.createElement('p');
+                body.className = 'text-sm text-gray-700 whitespace-pre-wrap';
+                body.textContent = c.content || '';
+                row.appendChild(meta);
+                row.appendChild(body);
+                if (mine) {
+                    const del = document.createElement('button');
+                    del.type = 'button';
+                    del.className =
+                        'mt-2 text-xs font-medium text-red-600 hover:underline';
+                    del.textContent = '삭제';
+                    del.onclick = function () {
+                        deleteComment(boardId, c.id);
+                    };
+                    row.appendChild(del);
+                }
+                listEl.appendChild(row);
+            });
+        }
+
+        async function loadCommentsForBoard(boardId, signal) {
+            const listEl = el('detail-comment-list');
+            const errEl = el('detail-comment-err');
+            if (!listEl) return;
+            if (errEl) errEl.classList.add('hidden');
+            listEl.innerHTML =
+                '<p class="text-xs text-gray-400 py-1">불러오는 중…</p>';
+            try {
+                const res = await axios.get(
+                    API_URL +
+                        '/boards/' +
+                        encodeURIComponent(boardId) +
+                        '/comments',
+                    {
+                        headers: authHeaders(),
+                        withCredentials: true,
+                        signal: signal,
+                    },
+                );
+                renderCommentList(listEl, boardId, res.data || []);
+            } catch (err) {
+                if (signal && signal.aborted) return;
+                if (isCanceledRequest(err)) return;
+                console.error(err);
+                listEl.innerHTML = '';
+                if (err.response && err.response.status === 401) {
+                    clearAuth();
+                    updateNav();
+                    showView('welcome');
+                    alert(
+                        '로그인이 만료되었거나 필요합니다. 다시 로그인해 주세요.',
+                    );
+                    return;
+                }
+                if (errEl) {
+                    errEl.textContent = errMessage(err);
+                    errEl.classList.remove('hidden');
+                }
+                listEl.innerHTML =
+                    '<p class="text-xs text-gray-400">댓글을 불러오지 못했습니다.</p>';
+            }
+        }
+
+        async function submitComment() {
+            const boardId = currentDetailBoardId;
+            if (!boardId) return;
+            const ta = el('detail-comment-input');
+            const content = ta && ta.value ? ta.value.trim() : '';
+            if (!content) {
+                return alert('댓글 내용을 입력해 주세요.');
+            }
+            try {
+                await axios.post(
+                    API_URL +
+                        '/boards/' +
+                        encodeURIComponent(boardId) +
+                        '/comments',
+                    { content },
+                    {
+                        headers: {
+                            ...authHeaders(),
+                            'Content-Type': 'application/json',
+                        },
+                        withCredentials: true,
+                    },
+                );
+                ta.value = '';
+                await loadCommentsForBoard(boardId);
+            } catch (err) {
+                console.error(err);
+                alert('댓글 등록 실패: ' + errMessage(err));
+            }
+        }
+
+        async function deleteComment(boardId, commentId) {
+            if (!confirm('이 댓글을 삭제할까요?')) {
+                return;
+            }
+            try {
+                await axios.delete(
+                    API_URL +
+                        '/boards/' +
+                        encodeURIComponent(boardId) +
+                        '/comments/' +
+                        encodeURIComponent(commentId),
+                    { headers: authHeaders(), withCredentials: true },
+                );
+                await loadCommentsForBoard(boardId);
+            } catch (err) {
+                console.error(err);
+                alert('삭제 실패: ' + errMessage(err));
+            }
         }
 
         async function deleteBoardById(id) {
@@ -421,7 +736,13 @@
                     headers: authHeaders(),
                     withCredentials: true,
                 });
-                await loadBoards();
+                if (currentDetailBoardId === id) {
+                    currentDetailBoardId = null;
+                    abortDetailRequests();
+                    showView('boards');
+                } else {
+                    await loadBoards();
+                }
             } catch (err) {
                 console.error(err);
                 alert('삭제 실패: ' + errMessage(err));
@@ -475,7 +796,13 @@
             modalEdit.classList.add('hidden');
         }
 
+        function goBackToBoardList() {
+            abortDetailRequests();
+            showView('boards');
+        }
         el('btnGoHome').onclick = () => showView('welcome');
+        el('btnBackToBoards').onclick = goBackToBoardList;
+        el('detail-comment-submit').onclick = () => void submitComment();
         el('btnOpenRegister').onclick = () => showView('register');
         el('btnOpenLogin').onclick = () => showView('login');
         el('linkToLoginFromReg').onclick = () => showView('login');
@@ -524,7 +851,11 @@
                     },
                 );
                 closeEditModal();
-                await loadBoards();
+                if (currentDetailBoardId && currentDetailBoardId === id) {
+                    await loadBoardDetailContent(id);
+                } else {
+                    await loadBoards();
+                }
             } catch (err) {
                 console.error(err);
                 alert('수정 실패: ' + errMessage(err));
@@ -603,7 +934,7 @@
             }
         };
 
-        el('loginSubmit').onclick = async () => {
+        async function submitLogin() {
             const email = el('loginEmail').value.trim();
             const password = el('loginPassword').value;
             const btn = el('loginSubmit');
@@ -635,7 +966,12 @@
                 btn.disabled = false;
                 btn.textContent = '로그인';
             }
-        };
+        }
+
+        el('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            void submitLogin();
+        });
 
         function showOauthFlashIfAny() {
             try {

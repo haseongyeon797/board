@@ -3,9 +3,11 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   RelationId,
 } from 'typeorm';
+import { Comment } from '../../comments/entities/comment.entity';
 import { User } from '../../user/entities/user.entity';
 import { BoardStatus } from '../boards.model';
 
@@ -36,4 +38,7 @@ export class Board {
 
   @RelationId((board: Board) => board.author)
   authorId: number;
+
+  @OneToMany(() => Comment, (comment) => comment.board)
+  comments: Comment[];
 }

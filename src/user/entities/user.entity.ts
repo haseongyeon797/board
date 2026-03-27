@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Board } from '../../boards/entities/board.entity';
+import { Comment } from '../../comments/entities/comment.entity';
 
 @Entity()
 export class User {
@@ -31,4 +32,7 @@ export class User {
 
   @OneToMany(() => Board, (board) => board.author)
   boards: Board[];
+
+  @OneToMany(() => Comment, (comment) => comment.author)
+  comments: Comment[];
 }
