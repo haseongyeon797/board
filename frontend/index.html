@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="api-base" content="http://localhost:3000">
+    <title>Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-white text-gray-900 antialiased">
+
+    <header class="fixed top-0 left-0 right-0 z-20 flex items-center justify-between gap-3 px-5 py-4 bg-white border-b border-gray-100">
+        <div id="nav-left" class="hidden shrink-0">
+            <button type="button" id="btnGoHome"
+                class="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                ← 처음으로
+            </button>
+        </div>
+        <div class="flex-1 min-w-0"></div>
+        <div id="nav-guest" class="flex items-center gap-2 shrink-0">
+            <button type="button" id="btnOpenRegister"
+                class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors">
+                회원가입
+            </button>
+            <button type="button" id="btnOpenLogin"
+                class="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors">
+                로그인
+            </button>
+        </div>
+        <div id="nav-user" class="hidden flex items-center gap-3 shrink-0">
+            <span id="navUserLabel" class="text-sm text-gray-600 max-w-[160px] truncate hidden sm:inline"></span>
+            <button type="button" id="btnLogoutHeader"
+                class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                로그아웃
+            </button>
+        </div>
+    </header>
+
+    <div id="oauthFlashBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-30 max-w-md w-[calc(100%-2rem)] px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium text-center shadow-lg" role="status"></div>
+
+    <main class="min-h-screen flex flex-col items-center px-6 pt-24 pb-16 w-full max-w-3xl mx-auto">
+
+        <!-- 비로그인: 안내 (게시물은 로그인 후) -->
+        <section id="view-welcome" class="hidden flex flex-col items-center text-center max-w-lg w-full">
+            <h1 class="text-4xl sm:text-5xl font-extralight tracking-tight text-gray-800">환영합니다</h1>
+            <p id="welcomeSub" class="mt-6 text-gray-500 text-sm sm:text-base leading-relaxed"></p>
+            <p class="mt-4 text-gray-400 text-sm">게시물을 보려면 로그인해 주세요.</p>
+        </section>
+
+        <!-- 로그인 후: 게시판 -->
+        <section id="view-boards" class="hidden w-full flex flex-col gap-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+                <div>
+                    <h2 class="text-2xl font-semibold text-gray-900">게시판</h2>
+                    <p id="boardsWelcomeLine" class="text-sm text-gray-500 mt-1"></p>
+                </div>
+                <button type="button" id="btnOpenCreateBoard"
+                    class="shrink-0 px-5 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-800 transition-colors">
+                    게시물 작성
+                </button>
+            </div>
+            <p id="boardListError" class="hidden text-sm text-red-600"></p>
+            <div id="boardList" class="flex flex-col gap-4 w-full"></div>
+            <p id="boardListEmpty" class="hidden text-center text-gray-400 text-sm py-12">아직 게시물이 없습니다. 첫 글을 작성해 보세요.</p>
+        </section>
+
+        <!-- 회원가입 -->
+        <section id="view-register" class="hidden w-full max-w-md">
+            <h2 class="text-2xl font-semibold text-center mb-2">회원가입</h2>
+            <p class="text-center text-gray-500 text-sm mb-8">계정 정보를 입력해 주세요.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">이름</label>
+                    <input type="text" id="regName" placeholder="홍길동"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">이메일</label>
+                    <input type="email" id="regEmail" placeholder="you@example.com"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">비밀번호</label>
+                    <input type="password" id="regPassword" placeholder="8자 이상, 대·소문자·숫자·특수문자"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">비밀번호 확인</label>
+                    <input type="password" id="regPasswordConfirm" placeholder="다시 입력"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <button type="button" id="regSubmit"
+                    class="w-full py-3.5 mt-2 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors">
+                    가입하기
+                </button>
+                <button type="button" id="regGithub"
+                    class="w-full py-3.5 border border-gray-200 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-50">
+                    <i class="fab fa-github text-lg"></i> GitHub로 가입하기
+                </button>
+                <p class="text-center text-sm text-gray-500 pt-2">
+                    이미 계정이 있나요?
+                    <button type="button" id="linkToLoginFromReg" class="text-gray-900 font-medium underline underline-offset-2">로그인</button>
+                </p>
+            </div>
+        </section>
+
+        <!-- 로그인 -->
+        <section id="view-login" class="hidden w-full max-w-md">
+            <h2 class="text-2xl font-semibold text-center mb-2">로그인</h2>
+            <p class="text-center text-gray-500 text-sm mb-8">이메일과 비밀번호를 입력해 주세요.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">이메일</label>
+                    <input type="email" id="loginEmail" placeholder="you@example.com"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">비밀번호</label>
+                    <input type="password" id="loginPassword" placeholder="비밀번호"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <button type="button" id="loginSubmit"
+                    class="w-full py-3.5 mt-2 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors">
+                    로그인
+                </button>
+                <button type="button" id="loginGithub"
+                    class="w-full py-3.5 border border-gray-200 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-50">
+                    <i class="fab fa-github text-lg"></i> GitHub로 로그인
+                </button>
+                <p class="text-center text-sm text-gray-500 pt-2">
+                    계정이 없나요?
+                    <button type="button" id="linkToRegisterFromLogin" class="text-gray-900 font-medium underline underline-offset-2">회원가입</button>
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 게시물 작성 모달 -->
+    <div id="modal-create-board" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4" aria-modal="true" role="dialog">
+        <div id="modal-create-backdrop" class="absolute inset-0 bg-black/40"></div>
+        <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-gray-900">게시물 작성</h3>
+            <div class="mt-4 space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">제목</label>
+                    <input type="text" id="createBoardTitle" placeholder="제목을 입력하세요"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">내용</label>
+                    <textarea id="createBoardDescription" rows="4" placeholder="내용을 입력하세요"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none resize-y min-h-[100px]"></textarea>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" id="btnCancelCreateBoard"
+                    class="px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50">취소</button>
+                <button type="button" id="btnSubmitCreateBoard"
+                    class="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800">등록</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게시물 수정 모달 -->
+    <div id="modal-edit-board" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4" aria-modal="true" role="dialog">
+        <div id="modal-edit-backdrop" class="absolute inset-0 bg-black/40"></div>
+        <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-gray-900">게시물 수정</h3>
+            <input type="hidden" id="editBoardId" value="">
+            <div class="mt-4 space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">제목</label>
+                    <input type="text" id="editBoardTitle" placeholder="제목"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">내용</label>
+                    <textarea id="editBoardDescription" rows="4" placeholder="내용"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none resize-y min-h-[100px]"></textarea>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">공개 설정</label>
+                    <select id="editBoardStatus"
+                        class="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none bg-white">
+                        <option value="PUBLIC">공개</option>
+                        <option value="PRIVATE">비공개</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" id="btnCancelEditBoard"
+                    class="px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50">취소</button>
+                <button type="button" id="btnSubmitEditBoard"
+                    class="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const API_URL =
+            document
+                .querySelector('meta[name="api-base"]')
+                ?.getAttribute('content')
+                ?.trim() || 'http://localhost:3000';
+
+        (function consumeOAuthHash() {
+            try {
+                var h = window.location.hash;
+                if (!h || h.substring(0, 3) !== '#t=') return;
+                var data = JSON.parse(decodeURIComponent(h.slice(3)));
+                if (data.accessToken) {
+                    localStorage.setItem('accessToken', data.accessToken);
+                }
+                if (data.user) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                }
+                if (data.oauthFlash === 'signup' || data.oauthFlash === 'login') {
+                    sessionStorage.setItem('oauthFlash', data.oauthFlash);
+                }
+                history.replaceState(
+                    null,
+                    document.title,
+                    window.location.pathname + window.location.search,
+                );
+            } catch (e) {
+                console.warn('OAuth hash 처리 실패', e);
+            }
+        })();
+
+        const el = (id) => document.getElementById(id);
+        const viewWelcome = el('view-welcome');
+        const viewBoards = el('view-boards');
+        const viewRegister = el('view-register');
+        const viewLogin = el('view-login');
+        const navLeft = el('nav-left');
+        const navGuest = el('nav-guest');
+        const navUser = el('nav-user');
+        const navUserLabel = el('navUserLabel');
+        const welcomeSub = el('welcomeSub');
+        const boardsWelcomeLine = el('boardsWelcomeLine');
+        const boardList = el('boardList');
+        const boardListEmpty = el('boardListEmpty');
+        const boardListError = el('boardListError');
+        const modalCreate = el('modal-create-board');
+        const modalEdit = el('modal-edit-board');
+
+        function getUser() {
+            try {
+                const raw = localStorage.getItem('user');
+                if (raw) return JSON.parse(raw);
+            } catch (_) {}
+            return null;
+        }
+
+        function isLoggedIn() {
+            const token = localStorage.getItem('accessToken');
+            const user = getUser();
+            return Boolean(token && user);
+        }
+
+        function authHeaders() {
+            const t = localStorage.getItem('accessToken');
+            return t ? { Authorization: 'Bearer ' + t } : {};
+        }
+
+        function clearAuth() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+        }
+
+        function updateNav() {
+            const logged = isLoggedIn();
+            navGuest.classList.toggle('hidden', logged);
+            navUser.classList.toggle('hidden', !logged);
+            if (logged) {
+                const u = getUser();
+                navUserLabel.textContent = (u && (u.name || u.email)) ? (u.name || u.email) + '님' : '';
+            }
+        }
+
+        function refreshWelcomeMessage() {
+            welcomeSub.textContent =
+                '회원가입 또는 로그인 후 게시판을 이용할 수 있습니다.';
+        }
+
+        function showView(name) {
+            if (isLoggedIn() && (name === 'welcome' || name === 'register' || name === 'login')) {
+                name = 'boards';
+            }
+            if (!isLoggedIn() && name === 'boards') {
+                name = 'welcome';
+            }
+
+            viewWelcome.classList.toggle('hidden', name !== 'welcome');
+            viewBoards.classList.toggle('hidden', name !== 'boards');
+            viewRegister.classList.toggle('hidden', name !== 'register');
+            viewLogin.classList.toggle('hidden', name !== 'login');
+
+            const guestSubView = name === 'register' || name === 'login';
+            navLeft.classList.toggle('hidden', !guestSubView);
+            updateNav();
+
+            if (name === 'welcome') {
+                refreshWelcomeMessage();
+            }
+            if (name === 'boards') {
+                const u = getUser();
+                boardsWelcomeLine.textContent =
+                    (u && (u.name || u.email) ? (u.name || u.email) + '님, ' : '') +
+                    '전체 게시물을 확인할 수 있습니다.';
+                loadBoards();
+            }
+        }
+
+        function errMessage(err) {
+            const data = err.response?.data;
+            if (data?.message) {
+                return Array.isArray(data.message) ? data.message.join('\n') : data.message;
+            }
+            const noResponse = !err.response;
+            if (noResponse) {
+                return (
+                    '백엔드에 연결되지 않았습니다.\n\n' +
+                    '• Nest API 기본 주소: ' +
+                    API_URL +
+                    '\n• npm run start:dev 로 서버를 켰는지 확인하세요.'
+                );
+            }
+            return String(err.message || '요청에 실패했습니다.');
+        }
+
+        function statusLabel(s) {
+            if (s === 'PUBLIC') return '공개';
+            if (s === 'PRIVATE') return '비공개';
+            return s || '';
+        }
+
+        function renderBoards(items) {
+            boardList.innerHTML = '';
+            boardListError.classList.add('hidden');
+            if (!items || items.length === 0) {
+                boardListEmpty.classList.remove('hidden');
+                return;
+            }
+            boardListEmpty.classList.add('hidden');
+            const myId = getUser()?.id;
+            items.forEach(function (b) {
+                const card = document.createElement('article');
+                card.className =
+                    'rounded-2xl border border-gray-100 bg-gray-50/50 p-5 text-left shadow-sm';
+                const authorName = b.author && (b.author.name || b.author.email) ? (b.author.name || b.author.email) : '알 수 없음';
+                const authorUserId =
+                    b.author && b.author.id != null
+                        ? b.author.id
+                        : b.authorId;
+                const mine =
+                    myId != null &&
+                    authorUserId != null &&
+                    Number(authorUserId) === Number(myId);
+                const badge = document.createElement('div');
+                badge.className = 'flex flex-wrap items-center gap-2 mb-2';
+                const spanAuthor = document.createElement('span');
+                spanAuthor.className = 'text-xs font-medium text-gray-500';
+                spanAuthor.textContent = (mine ? '내 글 · ' : '') + authorName;
+                const spanStatus = document.createElement('span');
+                spanStatus.className =
+                    'text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ' +
+                    (b.status === 'PRIVATE' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800');
+                spanStatus.textContent = statusLabel(b.status);
+                badge.appendChild(spanAuthor);
+                badge.appendChild(spanStatus);
+                const h = document.createElement('h3');
+                h.className = 'text-lg font-semibold text-gray-900';
+                h.textContent = b.title || '';
+                const p = document.createElement('p');
+                p.className = 'mt-2 text-sm text-gray-600 whitespace-pre-wrap';
+                p.textContent = b.description || '';
+                card.appendChild(badge);
+                card.appendChild(h);
+                card.appendChild(p);
+                if (mine) {
+                    const actions = document.createElement('div');
+                    actions.className = 'mt-4 flex justify-end gap-2 flex-wrap';
+                    const btnEdit = document.createElement('button');
+                    btnEdit.type = 'button';
+                    btnEdit.className =
+                        'px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-white transition-colors';
+                    btnEdit.textContent = '수정';
+                    btnEdit.onclick = function () {
+                        openEditModal({
+                            id: b.id,
+                            title: b.title || '',
+                            description: b.description || '',
+                            status: b.status || 'PUBLIC',
+                        });
+                    };
+                    const btnDel = document.createElement('button');
+                    btnDel.type = 'button';
+                    btnDel.className =
+                        'px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors';
+                    btnDel.textContent = '삭제';
+                    btnDel.onclick = function () {
+                        deleteBoardById(b.id);
+                    };
+                    actions.appendChild(btnEdit);
+                    actions.appendChild(btnDel);
+                    card.appendChild(actions);
+                }
+                boardList.appendChild(card);
+            });
+        }
+
+        async function deleteBoardById(id) {
+            if (!id || !confirm('이 게시물을 삭제할까요? 삭제하면 되돌릴 수 없습니다.')) {
+                return;
+            }
+            try {
+                await axios.delete(API_URL + '/boards/' + encodeURIComponent(id), {
+                    headers: authHeaders(),
+                    withCredentials: true,
+                });
+                await loadBoards();
+            } catch (err) {
+                console.error(err);
+                alert('삭제 실패: ' + errMessage(err));
+            }
+        }
+
+        async function loadBoards() {
+            boardListError.classList.add('hidden');
+            try {
+                const res = await axios.get(API_URL + '/boards', {
+                    headers: authHeaders(),
+                    withCredentials: true,
+                });
+                renderBoards(res.data);
+            } catch (err) {
+                console.error(err);
+                if (err.response && err.response.status === 401) {
+                    clearAuth();
+                    updateNav();
+                    showView('welcome');
+                    alert('로그인이 만료되었거나 필요합니다. 다시 로그인해 주세요.');
+                    return;
+                }
+                boardListEmpty.classList.add('hidden');
+                boardList.innerHTML = '';
+                boardListError.textContent = '목록을 불러오지 못했습니다: ' + errMessage(err);
+                boardListError.classList.remove('hidden');
+            }
+        }
+
+        function openCreateModal() {
+            el('createBoardTitle').value = '';
+            el('createBoardDescription').value = '';
+            modalCreate.classList.remove('hidden');
+        }
+
+        function closeCreateModal() {
+            modalCreate.classList.add('hidden');
+        }
+
+        function openEditModal(board) {
+            el('editBoardId').value = board.id;
+            el('editBoardTitle').value = board.title;
+            el('editBoardDescription').value = board.description;
+            el('editBoardStatus').value =
+                board.status === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
+            modalEdit.classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            modalEdit.classList.add('hidden');
+        }
+
+        el('btnGoHome').onclick = () => showView('welcome');
+        el('btnOpenRegister').onclick = () => showView('register');
+        el('btnOpenLogin').onclick = () => showView('login');
+        el('linkToLoginFromReg').onclick = () => showView('login');
+        el('linkToRegisterFromLogin').onclick = () => showView('register');
+
+        el('btnLogoutHeader').onclick = () => {
+            clearAuth();
+            updateNav();
+            showView('welcome');
+        };
+
+        el('regGithub').onclick = () => {
+            window.location.href = API_URL + '/auth/github/signup';
+        };
+        el('loginGithub').onclick = () => {
+            window.location.href = API_URL + '/auth/github/login';
+        };
+
+        el('btnOpenCreateBoard').onclick = () => openCreateModal();
+        el('modal-create-backdrop').onclick = () => closeCreateModal();
+        el('btnCancelCreateBoard').onclick = () => closeCreateModal();
+        el('modal-edit-backdrop').onclick = () => closeEditModal();
+        el('btnCancelEditBoard').onclick = () => closeEditModal();
+
+        el('btnSubmitEditBoard').onclick = async () => {
+            const id = el('editBoardId').value.trim();
+            const title = el('editBoardTitle').value.trim();
+            const description = el('editBoardDescription').value.trim();
+            const status = el('editBoardStatus').value;
+            const btn = el('btnSubmitEditBoard');
+            if (!id || !title || !description) {
+                return alert('제목과 내용을 입력해 주세요.');
+            }
+            btn.disabled = true;
+            btn.textContent = '저장 중…';
+            try {
+                await axios.patch(
+                    API_URL + '/boards/' + encodeURIComponent(id),
+                    { title, description, status },
+                    {
+                        headers: {
+                            ...authHeaders(),
+                            'Content-Type': 'application/json',
+                        },
+                        withCredentials: true,
+                    },
+                );
+                closeEditModal();
+                await loadBoards();
+            } catch (err) {
+                console.error(err);
+                alert('수정 실패: ' + errMessage(err));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '저장';
+            }
+        };
+
+        el('btnSubmitCreateBoard').onclick = async () => {
+            const title = el('createBoardTitle').value.trim();
+            const description = el('createBoardDescription').value.trim();
+            const btn = el('btnSubmitCreateBoard');
+            if (!title || !description) {
+                return alert('제목과 내용을 입력해 주세요.');
+            }
+            btn.disabled = true;
+            btn.textContent = '등록 중…';
+            try {
+                await axios.post(
+                    API_URL + '/boards',
+                    { title, description },
+                    { headers: authHeaders(), withCredentials: true },
+                );
+                closeCreateModal();
+                await loadBoards();
+            } catch (err) {
+                console.error(err);
+                alert('등록 실패: ' + errMessage(err));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '등록';
+            }
+        };
+
+        el('regSubmit').onclick = async () => {
+            const name = el('regName').value.trim();
+            const email = el('regEmail').value.trim();
+            const password = el('regPassword').value;
+            const passwordConfirm = el('regPasswordConfirm').value;
+            const btn = el('regSubmit');
+
+            if (!name || !email || !password || !passwordConfirm) {
+                return alert('모든 필드를 입력해 주세요.');
+            }
+            if (password !== passwordConfirm) {
+                return alert('비밀번호가 일치하지 않습니다.');
+            }
+
+            btn.disabled = true;
+            btn.textContent = '처리 중…';
+            try {
+                const res = await axios.post(
+                    API_URL + '/auth/register',
+                    { name, email, password, passwordConfirm },
+                    { withCredentials: true },
+                );
+                el('regName').value = '';
+                el('regEmail').value = '';
+                el('regPassword').value = '';
+                el('regPasswordConfirm').value = '';
+                if (res.data?.accessToken) {
+                    localStorage.setItem('accessToken', res.data.accessToken);
+                    localStorage.setItem('user', JSON.stringify(res.data.user));
+                } else {
+                    clearAuth();
+                }
+                updateNav();
+                showView('boards');
+            } catch (err) {
+                console.error(err);
+                alert('가입 실패: ' + errMessage(err));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '가입하기';
+            }
+        };
+
+        el('loginSubmit').onclick = async () => {
+            const email = el('loginEmail').value.trim();
+            const password = el('loginPassword').value;
+            const btn = el('loginSubmit');
+
+            if (!email || !password) {
+                return alert('이메일과 비밀번호를 입력해 주세요.');
+            }
+
+            btn.disabled = true;
+            btn.textContent = '로그인 중…';
+            try {
+                const res = await axios.post(
+                    API_URL + '/auth/login',
+                    { provider: 'local', email, password },
+                    { withCredentials: true },
+                );
+                if (res.data?.accessToken) {
+                    localStorage.setItem('accessToken', res.data.accessToken);
+                    localStorage.setItem('user', JSON.stringify(res.data.user));
+                }
+                el('loginEmail').value = '';
+                el('loginPassword').value = '';
+                updateNav();
+                showView('boards');
+            } catch (err) {
+                console.error(err);
+                alert('로그인 실패: ' + errMessage(err));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '로그인';
+            }
+        };
+
+        function showOauthFlashIfAny() {
+            try {
+                var flash = sessionStorage.getItem('oauthFlash');
+                if (flash !== 'signup' && flash !== 'login') return;
+                sessionStorage.removeItem('oauthFlash');
+                var b = el('oauthFlashBanner');
+                if (!b) return;
+                b.textContent =
+                    flash === 'signup'
+                        ? 'GitHub 가입이 완료되었습니다.'
+                        : 'GitHub 로그인이 완료되었습니다.';
+                b.classList.remove('hidden');
+                setTimeout(function () {
+                    b.classList.add('hidden');
+                }, 4500);
+            } catch (_) {}
+        }
+
+        updateNav();
+        if (isLoggedIn()) {
+            showView('boards');
+        } else {
+            showView('welcome');
+        }
+        showOauthFlashIfAny();
+    </script>
+</body>
+</html>
