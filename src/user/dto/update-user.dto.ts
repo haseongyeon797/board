@@ -7,6 +7,6 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
-  @IsEmail()
+  @IsEmail() //length 제한도 여기 들어가있음 100자 이하
   email?: string;
 }

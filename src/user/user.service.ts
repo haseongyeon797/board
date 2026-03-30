@@ -7,16 +7,6 @@ import { User } from './entities/user.entity';
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {} //user repository 가져옴
 
-  createUser(name: string, email: string) {
-    //name이랑 email 인자로 받아와서 saveUser에 넣어 return함 ''이건 머지
-    return this.userRepository.saveUser(name, email, '');
-  }
-
-  getUsers() {
-    //findAllUsers 호출해서 모든 user 읽기
-    return this.userRepository.findAllUsers();
-  }
-
   async createWithPasswordHash(
     //비동기 함수 나머지랑 상관없이 saveUser return
     name: string,
@@ -58,7 +48,7 @@ export class UserService {
     return this.userRepository.findAllUsers(); //모든 user 읽기
   }
 
-  async findOne(id: number) {
+  async findById(id: number) {
     //unique id로 유저찾기 +에러 핸들링
     const user = await this.userRepository.findUserById(id);
     if (!user) {

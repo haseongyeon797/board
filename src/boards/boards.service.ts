@@ -44,7 +44,8 @@ export class BoardsService {
   }
 
   async createBoard(dto: CreateBoardDto, authorId: number): Promise<Board> {
-    const board = this.boardRepo.create({ //board 객체 생성
+    const board = this.boardRepo.create({
+      //board 객체 생성
       title: dto.title, //dto에서 title, description, status, authorId 가져옴
       description: dto.description,
       status: BoardStatus.PUBLIC,
@@ -54,7 +55,8 @@ export class BoardsService {
     return this.getBoardById(saved.id, authorId); //방금 저장된 id랑 지금 내가 로그인한 id를 가져와서 게시물 가져옴
   }
 
-  async getBoardById(id: string, viewerId: number): Promise<Board> { //id랑 viewerId를 가져와서 게시물 가져옴
+  async getBoardById(id: string, viewerId: number): Promise<Board> {
+    //id랑 viewerId를 가져와서 게시물 가져옴
     const board = await this.boardRepo
       .createQueryBuilder('b') //위와 같음
       .leftJoinAndSelect('b.author', 'a')
@@ -73,23 +75,19 @@ export class BoardsService {
     return board;
   }
 
-  async deleteBoard(id: string, userId: number): Promise<void> { //id랑 userId를 가져와서 게시물 삭제
+  async deleteBoard(id: string, userId: number): Promise<void> {
+    //id랑 userId를 가져와서 게시물 삭제
     await this.assertAuthor(id, userId); //작성자와 로그인한 사람 비교 같은사람인지
     await this.boardRepo.delete(id);
   }
 
-  async updateBoard( //id랑 userId를 가져와서 게시물 업데이트 dto는 업데이트할 내용
+  async updateBoard(
+    //id랑 userId를 가져와서 게시물 업데이트 dto는 업데이트할 내용
     id: string,
     userId: number,
     dto: UpdateBoardDto,
   ): Promise<Board> {
-    const board = await this.boardRepo.findOne({ where: { id } }); //id로 게시물 찾기
-    if (!board) {
-      throw new NotFoundException(`Board "${id}" not found`); //결과가 없으면 오류 반환
-    }
-    if (Number(board.authorId) !== Number(userId)) { //number로 감싼 이유: 간혹 문자열로 넘어와서 타입 오류가 날 수 있기 때문에
-      throw new ForbiddenException('작성자만 수정·삭제할 수 있습니다.');
-    }
+    const board = await this.assertAuthor(id, userId);
     board.title = dto.title;
     board.description = dto.description;
     board.status = dto.status;
@@ -97,7 +95,7 @@ export class BoardsService {
     return this.getBoardById(id, userId);
   }
 
-  private async assertAuthor(id: string, userId: number): Promise<void> { //이게 호이스팅이구나
+  private async assertAuthor(id: string, userId: number): Promise<Board> {
     const board = await this.boardRepo.findOne({ where: { id } });
     if (!board) {
       throw new NotFoundException(`Board "${id}" not found`);
@@ -105,5 +103,6 @@ export class BoardsService {
     if (Number(board.authorId) !== Number(userId)) {
       throw new ForbiddenException('작성자만 수정·삭제할 수 있습니다.');
     }
+    return board;
   }
 }
