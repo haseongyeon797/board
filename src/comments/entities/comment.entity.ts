@@ -40,4 +40,7 @@ export class Comment {
 
   @RelationId((comment: Comment) => comment.author)
   authorId: number;
+
+  @Column({ type: 'boolean', default: false })
+  isAnonymous: boolean;
 }

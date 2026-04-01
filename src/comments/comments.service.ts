@@ -25,7 +25,7 @@ export class CommentsService {
       relations: ['author'],
       order: { createdAt: 'ASC' },
     });
-    return rows.map((c) => this.toItem(c));
+    return rows.map((c) => this.toItem(c, viewerId));
   }
 
   async create(
@@ -36,6 +36,7 @@ export class CommentsService {
     await this.boardsService.getBoardById(boardId, authorId);
     const comment = this.commentRepo.create({
       content: dto.content,
+      isAnonymous: dto.isAnonymous === true,
       board: { id: boardId },
       author: { id: authorId },
     });
@@ -47,7 +48,7 @@ export class CommentsService {
     if (!withAuthor) {
       throw new NotFoundException('Comment not found after create');
     }
-    return this.toItem(withAuthor);
+    return this.toItem(withAuthor, authorId);
   }
 
   async delete(
@@ -68,19 +69,22 @@ export class CommentsService {
     await this.commentRepo.delete(commentId);
   }
 
-  private toItem(c: Comment): CommentItem {
+  private toItem(c: Comment, viewerId: number): CommentItem {
     const author = c.author;
     if (!author) {
       throw new Error('Comment author not loaded');
     }
+    const isMine = Number(c.authorId) === Number(viewerId);
     return {
       id: c.id,
       content: c.content,
       createdAt: c.createdAt,
       authorId: c.authorId,
+      isAnonymous: c.isAnonymous,
+      isMine,
       author: {
         id: author.id,
-        name: author.name,
+        name: c.isAnonymous && !isMine ? '익명' : author.name,
         email: author.email,
       },
     };
