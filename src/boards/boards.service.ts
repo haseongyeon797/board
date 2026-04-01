@@ -80,13 +80,11 @@ export class BoardsService {
       //결과가 없으면 오류 반환
       throw new NotFoundException(`Board "${id}" not found`);
     }
-    if (board) {
-      if (Number(board.authorId) !== Number(viewerId)) {
-        board.viewCount += 1;
-        await this.boardRepo.save(board);
-      }
-    }
     return board;
+  }
+
+  async incrementViewcount(id: string): Promise<void> {
+    await this.boardRepo.increment({ id }, 'viewCount', 1);
   }
 
   async deleteBoard(id: string, userId: number): Promise<void> {

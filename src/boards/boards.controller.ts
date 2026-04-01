@@ -42,9 +42,13 @@ export class BoardsController {
   @Get('/:id')
   async getBoardById(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: number,
+    @CurrentUser('sub') viewerId: number,
   ): Promise<Board> {
-    return this.boardsService.getBoardById(id, userId);
+    const board = await this.boardsService.getBoardById(id, viewerId);
+    if (Number(board.authorId) !== Number(viewerId)) {
+      await this.boardsService.incrementViewcount(id);
+    }
+    return board;
   }
 
   @Delete('/:id')
