@@ -63,6 +63,7 @@
             <p id="boardListError" class="hidden text-sm text-red-600"></p>
             <div id="boardList" class="flex flex-col gap-4 w-full"></div>
             <p id="boardListEmpty" class="hidden text-center text-gray-400 text-sm py-12">아직 게시물이 없습니다. 첫 글을 작성해 보세요.</p>
+            <div id="paginationContainer" class="hidden flex justify-center items-center gap-3 mt-2"></div>
         </section>
 
         <!-- 게시물 상세 (댓글 포함) -->
@@ -389,11 +390,52 @@
             return s || '';
         }
 
-        function renderBoards(items) {
+        let currentPage = 1;
+
+        function renderPagination(pageInfo) {
+            const container = el('paginationContainer');
+            container.innerHTML = '';
+            if (!pageInfo || pageInfo.totalPage <= 1) {
+                container.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+
+            const btnPrev = document.createElement('button');
+            btnPrev.type = 'button';
+            btnPrev.textContent = '이전';
+            btnPrev.className = 'px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg transition-colors ' +
+                (currentPage <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50');
+            btnPrev.disabled = currentPage <= 1;
+            btnPrev.onclick = function () {
+                if (currentPage > 1) { currentPage--; loadBoards(); }
+            };
+
+            const pageLabel = document.createElement('span');
+            pageLabel.className = 'text-sm text-gray-500';
+            pageLabel.textContent = currentPage + ' / ' + pageInfo.totalPage;
+
+            const btnNext = document.createElement('button');
+            btnNext.type = 'button';
+            btnNext.textContent = '다음';
+            btnNext.className = 'px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg transition-colors ' +
+                (currentPage >= pageInfo.totalPage ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50');
+            btnNext.disabled = currentPage >= pageInfo.totalPage;
+            btnNext.onclick = function () {
+                if (currentPage < pageInfo.totalPage) { currentPage++; loadBoards(); }
+            };
+
+            container.appendChild(btnPrev);
+            container.appendChild(pageLabel);
+            container.appendChild(btnNext);
+        }
+
+        function renderBoards(items, pageInfo) {
             boardList.innerHTML = '';
             boardListError.classList.add('hidden');
             if (!items || items.length === 0) {
                 boardListEmpty.classList.remove('hidden');
+                el('paginationContainer').classList.add('hidden');
                 return;
             }
             boardListEmpty.classList.add('hidden');
@@ -464,6 +506,7 @@
                 };
                 boardList.appendChild(card);
             });
+            renderPagination(pageInfo);
         }
 
         async function openBoardDetail(boardId) {
@@ -531,6 +574,12 @@
                 actions.appendChild(btnEdit);
                 actions.appendChild(btnDel);
             }
+            const spanViews = document.createElement('span');
+            spanViews.className =
+                'text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800';
+            spanViews.textContent = '조회 ' + (b.viewCount ?? 0);
+
+            badge.appendChild(spanViews);
         }
 
         async function loadBoardDetailContent(boardId, signal) {
@@ -752,11 +801,11 @@
         async function loadBoards() {
             boardListError.classList.add('hidden');
             try {
-                const res = await axios.get(API_URL + '/boards', {
+                const res = await axios.get(API_URL + '/boards?pageNo=' + currentPage, {
                     headers: authHeaders(),
                     withCredentials: true,
                 });
-                renderBoards(res.data);
+                renderBoards(res.data.items, res.data);
             } catch (err) {
                 console.error(err);
                 if (err.response && err.response.status === 401) {
@@ -881,6 +930,7 @@
                     { headers: authHeaders(), withCredentials: true },
                 );
                 closeCreateModal();
+                currentPage = 1;
                 await loadBoards();
             } catch (err) {
                 console.error(err);
@@ -933,6 +983,8 @@
                 btn.textContent = '가입하기';
             }
         };
+
+
 
         async function submitLogin() {
             const email = el('loginEmail').value.trim();
@@ -990,6 +1042,8 @@
                 }, 4500);
             } catch (_) {}
         }
+
+       
 
         updateNav();
         if (isLoggedIn()) {

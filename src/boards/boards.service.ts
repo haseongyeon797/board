@@ -8,6 +8,9 @@ import { BoardStatus } from './boards.model';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { BoardRepository } from './repository/board.repository';
+import { Page } from './Pagination/page';
+
+const PAGE_SIZE = 5;
 
 const boardListSelect = [
   //b는 board a는 author const로 선언하기
@@ -15,6 +18,7 @@ const boardListSelect = [
   'b.title',
   'b.description',
   'b.status',
+  'b.viewCount',
   'b.authorId',
   'a.id',
   'a.name',
@@ -29,8 +33,8 @@ const visibilityClause = //가시성절 누가 이 게시물을 보게 할것인
 export class BoardsService {
   constructor(private readonly boardRepo: BoardRepository) {}
 
-  async getAllboards(viewerId: number): Promise<Board[]> {
-    return this.boardRepo
+  async getAllboards(viewerId: number, pageNo: number): Promise<Page<Board>> {
+    const [items, totalCount] = await this.boardRepo
       .createQueryBuilder('b') //복잡한 쿼리를 짜야할때 사용
       .leftJoinAndSelect('b.author', 'a') //b와 a를 조인해서 결과를 가져옴 조인: 테이블 합쳐서 의미있는것만 select함
       .select([...boardListSelect]) //boardListSelect에 있는 컬럼만 select함
@@ -40,7 +44,11 @@ export class BoardsService {
         viewerId,
       })
       .orderBy('b.id', 'ASC') //id 기준 오름차순 정렬
-      .getMany(); //결과를 배열로 가져옴
+      .skip((pageNo - 1) * PAGE_SIZE) //건너뛸 항목 수
+      .take(PAGE_SIZE) //가져올 항목 수
+      .getManyAndCount(); //결과와 전체 개수를 함께 가져옴
+
+    return new Page(totalCount, PAGE_SIZE, items);
   }
 
   async createBoard(dto: CreateBoardDto, authorId: number): Promise<Board> {
@@ -71,6 +79,12 @@ export class BoardsService {
     if (!board) {
       //결과가 없으면 오류 반환
       throw new NotFoundException(`Board "${id}" not found`);
+    }
+    if (board) {
+      if (Number(board.authorId) !== Number(viewerId)) {
+        board.viewCount += 1;
+        await this.boardRepo.save(board);
+      }
     }
     return board;
   }

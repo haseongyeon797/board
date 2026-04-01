@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -14,6 +15,8 @@ import type { Board } from './boards.model';
 import { BoardsService } from './boards.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
+import { PageRequest } from './Pagination/pageRequest';
+import { Page } from './Pagination/page';
 
 @Controller('boards')
 @UseGuards(JwtAuthGuard)
@@ -21,8 +24,11 @@ export class BoardsController {
   constructor(private readonly boardsService: BoardsService) {}
 
   @Get()
-  async getAllboards(@CurrentUser('sub') userId: number): Promise<Board[]> {
-    return this.boardsService.getAllboards(userId);
+  async getAllboards(
+    @CurrentUser('sub') userId: number,
+    @Query() pageRequest: PageRequest,
+  ): Promise<Page<Board>> {
+    return this.boardsService.getAllboards(userId, pageRequest.pageNo ?? 1);
   }
 
   @Post()

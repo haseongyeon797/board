@@ -29,6 +29,9 @@ export class Board {
   })
   status: BoardStatus;
 
+  @Column({ default: 0 })
+  viewCount: number;
+
   @ManyToOne(() => User, (user) => user.boards, {
     onDelete: 'CASCADE',
     nullable: false,
