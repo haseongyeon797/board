@@ -66,7 +66,8 @@ export class CommentsService {
     if (Number(comment.authorId) !== Number(userId)) {
       throw new ForbiddenException('본인이 작성한 댓글만 삭제할 수 있습니다.');
     }
-    await this.commentRepo.delete(commentId);
+    comment.isdeleted = true;
+    await this.commentRepo.save(comment);
   }
 
   private toItem(c: Comment, viewerId: number): CommentItem {
@@ -74,19 +75,55 @@ export class CommentsService {
     if (!author) {
       throw new Error('Comment author not loaded');
     }
+    const isUpdated =
+      c.updatedAt && c.updatedAt.getTime() !== c.createdAt.getTime();
     const isMine = Number(c.authorId) === Number(viewerId);
+    const isDeleted = c.isdeleted;
+
     return {
-      id: c.id,
-      content: c.content,
+      id: isDeleted ? '알수없음' : c.id,
+      content: isDeleted ? '삭제된 댓글입니다.' : c.content,
       createdAt: c.createdAt,
-      authorId: c.authorId,
+      updatedAt: c.updatedAt,
+      date: isUpdated ? c.updatedAt : c.createdAt,
+      authorId: isDeleted ? null : c.authorId,
       isAnonymous: c.isAnonymous,
-      isMine,
+      isdeleted: isDeleted,
+      isUpdated,
+      isMine: isDeleted ? false : isMine,
       author: {
-        id: author.id,
-        name: c.isAnonymous && !isMine ? '익명' : author.name,
-        email: author.email,
+        id: isDeleted ? null : author.id,
+        name: isDeleted || (c.isAnonymous && !isMine) ? '익명' : author.name,
+        email: isDeleted ? 'hidden' : author.email,
       },
     };
+  }
+
+  async update(
+    boardId: string,
+    commentId: string,
+    userId: number,
+    dto: CreateCommentDto,
+  ): Promise<CommentItem> {
+    await this.boardsService.getBoardById(boardId, userId);
+    const comment = await this.commentRepo.findOne({
+      where: { id: commentId, board: { id: boardId } },
+    });
+    if (!comment) {
+      throw new NotFoundException(`Comment "${commentId}" not found`);
+    }
+    if (Number(comment.authorId) !== Number(userId)) {
+      throw new ForbiddenException('본인이 작성한 댓글만 수정할 수 있습니다.');
+    }
+    comment.content = dto.content;
+    await this.commentRepo.save(comment);
+    const withAuthor = await this.commentRepo.findOne({
+      where: { id: commentId },
+      relations: ['author'],
+    });
+    if (!withAuthor) {
+      throw new NotFoundException('Comment not found after update');
+    }
+    return this.toItem(withAuthor, userId);
   }
 }

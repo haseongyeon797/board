@@ -646,10 +646,18 @@
                 return;
             }
             comments.forEach(function (c) {
-                const mine = c.isMine === true;
                 const row = document.createElement('div');
                 row.className =
                     'rounded-xl border border-gray-100 bg-white p-3 text-left';
+                if (c.isdeleted === true) {
+                    const deleted = document.createElement('p');
+                    deleted.className = 'text-sm text-gray-400 italic';
+                    deleted.textContent = '삭제된 댓글입니다.';
+                    row.appendChild(deleted);
+                    listEl.appendChild(row);
+                    return;
+                }
+                const mine = c.isMine === true;
                 const meta = document.createElement('div');
                 meta.className =
                     'flex flex-wrap items-center justify-between gap-2 mb-1';
@@ -662,7 +670,7 @@
                 who.textContent = (mine ? '내 댓글 · ' : '') + name;
                 const when = document.createElement('span');
                 when.className = 'text-[10px] text-gray-400';
-                when.textContent = formatCommentDate(c.createdAt);
+                when.textContent = formatCommentDate(c.date) + (c.isUpdated ? ' (수정됨)' : '');
                 meta.appendChild(who);
                 meta.appendChild(when);
                 const body = document.createElement('p');
@@ -671,15 +679,25 @@
                 row.appendChild(meta);
                 row.appendChild(body);
                 if (mine) {
+                    const actions = document.createElement('div');
+                    actions.className = 'mt-2 flex gap-3';
+                    const edit = document.createElement('button');
+                    edit.type = 'button';
+                    edit.className = 'text-xs font-medium text-gray-600 hover:underline';
+                    edit.textContent = '수정';
+                    edit.onclick = function () {
+                        editComment(boardId, c);
+                    };
                     const del = document.createElement('button');
                     del.type = 'button';
-                    del.className =
-                        'mt-2 text-xs font-medium text-red-600 hover:underline';
+                    del.className = 'text-xs font-medium text-red-600 hover:underline';
                     del.textContent = '삭제';
                     del.onclick = function () {
                         deleteComment(boardId, c.id);
                     };
-                    row.appendChild(del);
+                    actions.appendChild(edit);
+                    actions.appendChild(del);
+                    row.appendChild(actions);
                 }
                 listEl.appendChild(row);
             });
@@ -759,6 +777,41 @@
                 console.error(err);
                 alert('댓글 등록 실패: ' + errMessage(err));
             }
+        }
+
+        function editComment(boardId, c) {
+            const ta = el('detail-comment-input');
+            const anonCheckbox = el('detail-comment-anonymous');
+            ta.value = c.content;
+            if (anonCheckbox) anonCheckbox.checked = c.isAnonymous;
+            ta.focus();
+
+            const submitBtn = el('detail-comment-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '수정';
+
+            const originalOnclick = submitBtn.onclick;
+            submitBtn.onclick = async function () {
+                const content = ta.value.trim();
+                if (!content) return alert('댓글 내용을 입력해 주세요.');
+                const isAnonymous = anonCheckbox?.checked ?? false;
+                try {
+                    await axios.patch(
+                        API_URL + '/boards/' + encodeURIComponent(boardId) +
+                            '/comments/' + encodeURIComponent(c.id),
+                        { content, isAnonymous },
+                        { headers: { ...authHeaders(), 'Content-Type': 'application/json' }, withCredentials: true },
+                    );
+                    ta.value = '';
+                    if (anonCheckbox) anonCheckbox.checked = false;
+                    submitBtn.textContent = originalText;
+                    submitBtn.onclick = originalOnclick;
+                    await loadCommentsForBoard(boardId);
+                } catch (err) {
+                    console.error(err);
+                    alert('수정 실패: ' + errMessage(err));
+                }
+            };
         }
 
         async function deleteComment(boardId, commentId) {

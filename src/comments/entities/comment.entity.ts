@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -20,6 +21,9 @@ export class Comment {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @ManyToOne(() => Board, (board) => board.comments, {
     onDelete: 'CASCADE',
@@ -43,4 +47,10 @@ export class Comment {
 
   @Column({ type: 'boolean', default: false })
   isAnonymous: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isdeleted: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isUpdated: boolean;
 }

@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -34,6 +35,16 @@ export class CommentsController {
     @CurrentUser('sub') userId: number,
   ): Promise<CommentItem> {
     return this.commentsService.create(boardId, dto, userId);
+  }
+
+  @Patch(':commentId')
+  async update(
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('commentId', ParseUUIDPipe) commentId: string,
+    @Body() dto: CreateCommentDto,
+    @CurrentUser('sub') userId: number,
+  ): Promise<CommentItem> {
+    return this.commentsService.update(boardId, commentId, userId, dto);
   }
 
   @Delete(':commentId')
