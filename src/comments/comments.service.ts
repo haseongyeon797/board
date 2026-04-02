@@ -86,15 +86,15 @@ export class CommentsService {
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       date: isUpdated ? c.updatedAt : c.createdAt,
-      authorId: isDeleted ? null : c.authorId,
+      authorId: isDeleted || (c.isAnonymous && !isMine) ? null : c.authorId,
       isAnonymous: c.isAnonymous,
       isdeleted: isDeleted,
       isUpdated,
       isMine: isDeleted ? false : isMine,
       author: {
-        id: isDeleted ? null : author.id,
+        id: isDeleted || (c.isAnonymous && !isMine) ? null : author.id,
         name: isDeleted || (c.isAnonymous && !isMine) ? '익명' : author.name,
-        email: isDeleted ? 'hidden' : author.email,
+        email: isDeleted || (c.isAnonymous && !isMine) ? '' : author.email,
       },
     };
   }

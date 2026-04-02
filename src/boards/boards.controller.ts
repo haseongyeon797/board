@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -41,7 +42,7 @@ export class BoardsController {
 
   @Get('/:id')
   async getBoardById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') viewerId: number,
   ): Promise<Board> {
     const board = await this.boardsService.getBoardById(id, viewerId);
@@ -53,7 +54,7 @@ export class BoardsController {
 
   @Delete('/:id')
   async deleteBoard(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') userId: number,
   ): Promise<void> {
     return this.boardsService.deleteBoard(id, userId);
@@ -61,7 +62,7 @@ export class BoardsController {
 
   @Patch('/:id')
   async updateBoard(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBoardDto,
     @CurrentUser('sub') userId: number,
   ): Promise<Board> {

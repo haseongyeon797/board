@@ -19,7 +19,10 @@ async function bootstrap() {
         .filter(Boolean)
     : [];
   app.enableCors({
-    origin: allowList.length > 0 ? allowList : true, // 개발: 요청 Origin 그대로 허용 (credentials와 함께 사용)
+    origin:
+      allowList.length > 0
+        ? allowList
+        : ['http://localhost:3000', 'http://localhost:8080'],
     credentials: true,
   });
 
@@ -32,8 +35,13 @@ async function bootstrap() {
     session({
       secret: sessionSecret,
       resave: false,
-      saveUninitialized: true,
-      cookie: { maxAge: 10 * 60 * 1000 },
+      saveUninitialized: false,
+      cookie: {
+        maxAge: 10 * 60 * 1000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+      },
     }),
   );
   app.use(passport.initialize());

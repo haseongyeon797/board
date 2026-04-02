@@ -50,7 +50,4 @@ export class Comment {
 
   @Column({ type: 'boolean', default: false })
   isdeleted: boolean;
-
-  @Column({ type: 'boolean', default: false })
-  isUpdated: boolean;
 }
