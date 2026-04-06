@@ -10,6 +10,8 @@ import { BoardsModule } from '../boards/boards.module';
 import { Board } from '../boards/entities/board.entity';
 import { CommentsModule } from '../comments/comments.module';
 import { Comment } from '../comments/entities/comment.entity';
+import { RecommendationModule } from '../boards/recommendation/recommendation.module';
+import { BoardRecommendation } from '../boards/recommendation/recommendation.entity';
 
 @Module({
   imports: [
@@ -23,7 +25,7 @@ import { Comment } from '../comments/entities/comment.entity';
         username: config.get<string>('DB_USERNAME', 'postgres'),
         password: config.get<string>('DB_PASSWORD', 'postgres'),
         database: config.get<string>('DB_DATABASE', 'board'),
-        entities: [User, Board, Comment],
+        entities: [User, Board, Comment, BoardRecommendation],
         synchronize: config.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
       }),
       inject: [ConfigService],
@@ -32,6 +34,7 @@ import { Comment } from '../comments/entities/comment.entity';
     UserModule,
     BoardsModule,
     CommentsModule,
+    RecommendationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
