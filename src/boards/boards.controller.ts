@@ -33,7 +33,7 @@ export class BoardsController {
     @CurrentUser('sub') userId: number,
     @Query() pageRequest: PageRequest,
   ): Promise<Page<Board>> {
-    return this.boardsService.getAllboards(userId, pageRequest.pageNo ?? 1);
+    return this.boardsService.getAllboards(userId, pageRequest);
   }
 
   @Post()

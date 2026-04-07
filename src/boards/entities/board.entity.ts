@@ -1,5 +1,6 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -31,6 +32,9 @@ export class Board {
 
   @Column({ default: 0 })
   viewCount: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
 
   @ManyToOne(() => User, (user) => user.boards, {
     onDelete: 'CASCADE',

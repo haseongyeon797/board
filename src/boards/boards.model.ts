@@ -8,6 +8,8 @@ export interface Board {
   title: string;
   description: string;
   status: BoardStatus;
+  viewCount: number;
+  createdAt: Date;
   authorId: number;
   author?: {
     id: number;

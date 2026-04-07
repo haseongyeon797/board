@@ -23,7 +23,12 @@ async function bootstrap() {
     origin:
       allowList.length > 0
         ? allowList
-        : ['http://localhost:3000', 'http://localhost:8080'],
+        : [
+            'http://localhost:3000',
+            'http://localhost:8080',
+            'https://hz36qgcm-3000.jpe1.devtunnels.ms',
+            'https://hz36qgcm-8080.jpe1.devtunnels.ms',
+          ],
     credentials: true,
   });
 
@@ -40,8 +45,8 @@ async function bootstrap() {
       cookie: {
         maxAge: 10 * 60 * 1000,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: true,
+        sameSite: 'none',
       },
     }),
   );

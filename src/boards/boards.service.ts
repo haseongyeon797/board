@@ -9,6 +9,7 @@ import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { BoardRepository } from './repository/board.repository';
 import { Page } from './Pagination/page';
+import { PageRequest, SortType } from './Pagination/pageRequest';
 
 const PAGE_SIZE = 5;
 
@@ -19,6 +20,7 @@ const boardListSelect = [
   'b.description',
   'b.status',
   'b.viewCount',
+  'b.createdAt',
   'b.authorId',
   'a.id',
   'a.name',
@@ -33,20 +35,36 @@ const visibilityClause = //가시성절 누가 이 게시물을 보게 할것인
 export class BoardsService {
   constructor(private readonly boardRepo: BoardRepository) {}
 
-  async getAllboards(viewerId: number, pageNo: number): Promise<Page<Board>> {
-    const [items, totalCount] = await this.boardRepo
-      .createQueryBuilder('b') //복잡한 쿼리를 짜야할때 사용
-      .leftJoinAndSelect('b.author', 'a') //b와 a를 조인해서 결과를 가져옴 조인: 테이블 합쳐서 의미있는것만 select함
-      .select([...boardListSelect]) //boardListSelect에 있는 컬럼만 select함
+  async getAllboards(viewerId: number, req: PageRequest): Promise<Page<Board>> {
+    const { pageNo = 1, search, sort = SortType.LATEST } = req;
+
+    const qb = this.boardRepo
+      .createQueryBuilder('b')
+      .leftJoinAndSelect('b.author', 'a')
+      .select([...boardListSelect])
       .where(visibilityClause, {
-        pubStatus: BoardStatus.PUBLIC, //파라미터 바인딩 객체 초기 상태 설정
+        pubStatus: BoardStatus.PUBLIC,
         privStatus: BoardStatus.PRIVATE,
         viewerId,
-      })
-      .orderBy('b.id', 'ASC') //id 기준 오름차순 정렬
-      .skip((pageNo - 1) * PAGE_SIZE) //건너뛸 항목 수
-      .take(PAGE_SIZE) //가져올 항목 수
-      .getManyAndCount(); //결과와 전체 개수를 함께 가져옴
+      });
+
+    if (search) {
+      qb.andWhere('b.title ILIKE :search', { search: `%${search}%` });
+    }
+
+    if (sort === SortType.VIEWS) {
+      qb.orderBy('b.viewCount', 'DESC');
+    } else if (sort === SortType.OLDEST) {
+      qb.orderBy('b.createdAt', 'ASC');
+    } else {
+      qb.orderBy('b.createdAt', 'DESC');
+    }
+    qb.addOrderBy('b.id', 'DESC');
+
+    const [items, totalCount] = await qb
+      .skip((pageNo - 1) * PAGE_SIZE)
+      .take(PAGE_SIZE)
+      .getManyAndCount();
 
     return new Page(totalCount, PAGE_SIZE, items);
   }

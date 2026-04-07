@@ -60,6 +60,22 @@
                     게시물 작성
                 </button>
             </div>
+            <div class="flex flex-col sm:flex-row gap-3 w-full">
+                <div class="flex flex-1 gap-2">
+                    <input type="text" id="searchInput" placeholder="제목 검색"
+                        class="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none">
+                    <button type="button" id="btnSearch"
+                        class="shrink-0 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-800 transition-colors">
+                        검색
+                    </button>
+                </div>
+                <select id="sortSelect"
+                    class="px-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none bg-white">
+                    <option value="latest">최신순</option>
+                    <option value="oldest">오래된순</option>
+                    <option value="views">조회수순</option>
+                </select>
+            </div>
             <p id="boardListError" class="hidden text-sm text-red-600"></p>
             <div id="boardList" class="flex flex-col gap-4 w-full"></div>
             <p id="boardListEmpty" class="hidden text-center text-gray-400 text-sm py-12">아직 게시물이 없습니다. 첫 글을 작성해 보세요.</p>
@@ -374,6 +390,7 @@
                 refreshWelcomeMessage();
             }
             if (name === 'boards') {
+                currentPage = 1;
                 currentDetailBoardId = null;
                 const u = getUser();
                 boardsWelcomeLine.textContent =
@@ -510,6 +527,12 @@
                     row.appendChild(actions);
                 }
                 card.appendChild(row);
+                if (b.createdAt) {
+                    const meta = document.createElement('p');
+                    meta.className = 'mt-1.5 text-xs text-gray-400';
+                    meta.textContent = formatCommentDate(b.createdAt);
+                    card.appendChild(meta);
+                }
                 const bid = b.id;
                 card.onclick = function () {
                     void openBoardDetail(bid);
@@ -561,6 +584,12 @@
                     ? 'bg-amber-100 text-amber-800'
                     : 'bg-emerald-100 text-emerald-800');
             spanStatus.textContent = statusLabel(b.status);
+            if (b.createdAt) {
+                const spanDate = document.createElement('span');
+                spanDate.className = 'text-xs text-gray-400';
+                spanDate.textContent = formatCommentDate(b.createdAt);
+                badge.appendChild(spanDate);
+            }
             badge.appendChild(spanAuthor);
             badge.appendChild(spanStatus);
             el('detailBoardTitle').textContent = b.title || '';
@@ -922,7 +951,11 @@
         async function loadBoards() {
             boardListError.classList.add('hidden');
             try {
-                const res = await axios.get(API_URL + '/boards?pageNo=' + currentPage, {
+                const searchVal = el('searchInput')?.value?.trim() || '';
+                const sortVal = el('sortSelect')?.value || 'latest';
+                let url = API_URL + '/boards?pageNo=' + currentPage + '&sort=' + sortVal;
+                if (searchVal) url += '&search=' + encodeURIComponent(searchVal);
+                const res = await axios.get(url, {
                     headers: authHeaders(),
                     withCredentials: true,
                 });
@@ -972,6 +1005,17 @@
         }
         el('btnGoHome').onclick = () => showView('welcome');
         el('btnBackToBoards').onclick = goBackToBoardList;
+        el('btnSearch').onclick = function () {
+            currentPage = 1;
+            loadBoards();
+        };
+        el('searchInput').onkeydown = function (e) {
+            if (e.key === 'Enter') { currentPage = 1; loadBoards(); }
+        };
+        el('sortSelect').onchange = function () {
+            currentPage = 1;
+            loadBoards();
+        };
         el('detail-comment-submit').onclick = () => void submitComment();
         el('btnOpenRegister').onclick = () => showView('register');
         el('btnOpenLogin').onclick = () => showView('login');
